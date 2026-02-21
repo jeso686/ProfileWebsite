@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redragon .mac Generator (Offline)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Redragon .mac Generator (Offline)</h1>
+    <p>US layout • fast macro builder • no network</p>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Inputs</h2>
+      <div class="row">
+        <label>sample.mac (required)
+          <input id="sampleFile" type="file" accept=".mac,.json" />
+        </label>
+        <label>mapping.json
+          <input id="mappingFile" type="file" accept=".json" />
+        </label>
+      </div>
+      <div class="row actions">
+        <button id="downloadTemplateBtn">Download mapping template</button>
+        <button id="coverageBtn">Export coverage report</button>
+      </div>
+
+      <div id="coverage" class="box small"></div>
+      <div id="messages" class="box"></div>
+
+      <h3>Settings</h3>
+      <div class="row three">
+        <label>MacroName <input id="macroName" value="MyMacro" /></label>
+        <label>Inter-key delay (ms) <input id="interDelay" type="number" value="70" min="0" /></label>
+        <label>Key press delay (ms) <input id="pressDelay" type="number" value="0" min="0" /></label>
+      </div>
+      <div class="row three">
+        <label><input id="humanize" type="checkbox" /> Humanize</label>
+        <label>jitter ±ms <input id="jitter" type="number" value="10" min="0" /></label>
+        <label><input id="jitterOnlyText" type="checkbox" checked /> jitter only on text</label>
+      </div>
+      <div class="row three">
+        <label>End delay (ms) <input id="endDelay" type="number" value="0" min="0" /></label>
+        <label><input id="pretty" type="checkbox" checked /> Pretty JSON</label>
+      </div>
+
+      <h3>Presets</h3>
+      <div class="chips" id="presets"></div>
+
+      <h3>Macro script</h3>
+      <textarea id="script" rows="14" spellcheck="false" placeholder='Type text and commands, e.g.\n{TEXT:"diskpart\\nlist disk\\n"}\n{CHORD:CTRL+V}'></textarea>
+      <div class="row actions">
+        <button id="generateBtn">Generate (Ctrl+Enter)</button>
+        <button id="downloadBtn">Download .mac (Ctrl+S)</button>
+        <button id="copyBtn">Copy JSON</button>
+        <button id="clearBtn">Clear (Ctrl+L)</button>
+      </div>
+
+      <h3>Snippet library</h3>
+      <div class="row">
+        <input id="snippetName" placeholder="Snippet name" />
+        <button id="saveSnippetBtn">Save snippet</button>
+      </div>
+      <div id="snippetList" class="box small"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Preview</h2>
+      <div id="summary" class="box small"></div>
+      <h3>Typed output simulator</h3>
+      <pre id="typed" class="box"></pre>
+      <h3>Symbol mapping</h3>
+      <pre id="symbolMap" class="box small"></pre>
+      <h3>First 60 events</h3>
+      <pre id="eventPreview" class="box"></pre>
+      <h3>JSON</h3>
+      <pre id="jsonPreview" class="box"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <small>Hotkeys: Ctrl+Enter generate • Ctrl+S download • Ctrl+L clear • Ctrl+/ insert command template</small>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
