@@ -1,18 +1,20 @@
 # Redragon .mac Generator (Offline)
 
-Офлайн веб-приложение для генерации `.mac` (JSON) из короткого DSL-скрипта.
-Открывается напрямую как `index.html`, без сборки и без сети.
+> Note: this README is now in **English**. The previous version was in **Russian**.
 
-## 1) Как получить `sample.mac` из Redragon
-1. Откройте Redragon Software.
-2. Создайте/выберите любой макрос.
-3. Экспортируйте макрос в файл `.mac`.
-4. Загрузите его в поле **sample.mac (required)**.
+Offline web app to generate Redragon `.mac` (JSON) files from a short DSL script.
+Open directly as `index.html` (no build step, no CDN, no network requests).
 
-> `sample.mac` обязателен: приложение копирует структуру и поля (`Version`, `Type`, и т.д.) именно из него.
+## 1) How to export `sample.mac` from Redragon Software
+1. Open Redragon Software.
+2. Create or select any macro.
+3. Export the macro to a `.mac` file.
+4. Load it in **sample.mac (required)**.
 
-## 2) Как подготовить `mapping.json`
-Формат:
+> `sample.mac` is required because the app preserves the original JSON structure/fields (`Version`, `Type`, etc.) from that file.
+
+## 2) How to prepare `mapping.json`
+Format example:
 
 ```json
 {
@@ -23,22 +25,22 @@
 }
 ```
 
-- Ключ: `KEY_NAME`
-- Значение: `ButtonCode` (int)
+- Key: `KEY_NAME`
+- Value: `ButtonCode` (integer)
 
-Если mapping пока нет, нажмите **Download mapping template**.
+If you do not have a mapping yet, click **Download mapping template**.
 
-## 3) Как сгенерировать и импортировать `.mac`
-1. Откройте `index.html`.
-2. Загрузите `sample.mac` и (желательно) `mapping.json`.
-3. Введите скрипт в **Macro script**.
-4. Нажмите **Generate** (или `Ctrl+Enter`).
-5. Нажмите **Download .mac** (или `Ctrl+S`).
-6. Импортируйте файл в Redragon Software и назначьте в профиль устройства.
+## 3) How to generate and import `.mac`
+1. Open `index.html`.
+2. Load `sample.mac` and (optionally) `mapping.json`.
+3. Enter script in **Macro script**.
+4. Click **Generate** (or press `Ctrl+Enter`).
+5. Click **Download .mac** (or press `Ctrl+S`).
+6. Import the generated file in Redragon Software and assign it to your profile/device key.
 
 ## DSL
-- Обычный текст: печать символов (US).
-- Команды:
+- Plain text: type characters using US layout.
+- Commands:
   - `{DELAY:ms}`
   - `{ENTER}` `{TAB}` `{SPACE}` `{BACKSPACE}` `{ESC}`
   - `{RAW:KEY}`
@@ -46,17 +48,17 @@
   - `{DOWN:KEY}` / `{UP:KEY}`
   - `{HOLD:KEY:ms}`
   - `{REPEAT:n} ... {/REPEAT}`
-  - `{TEXT:"..."}` с `\"` и `\n`
-- Экранирование: `\{` и `\\`
-- Комментарий: строка, начинающаяся с `#`
+  - `{TEXT:"..."}` with `\"` and `\n`
+- Escaping: `\{` and `\\`
+- Comments: lines starting with `#`
 
-## Важно по US Shift
-- `:` генерируется только как `SHIFT + SEMICOLON`.
-- `;` генерируется как `SEMICOLON` без Shift.
-- Для символов с Shift: `SHIFT down` -> `key down/up` -> `SHIFT up`.
+## Important US Shift rules
+- `:` is generated strictly as `SHIFT + SEMICOLON`.
+- `;` is generated as `SEMICOLON` without Shift.
+- For shifted symbols: `SHIFT down` -> `key down/up` -> `SHIFT up`.
 
 ## Hotkeys
 - `Ctrl+Enter` — Generate
-- `Ctrl+S` — Download .mac
+- `Ctrl+S` — Download `.mac`
 - `Ctrl+L` — Clear
-- `Ctrl+/` — вставить шаблон команды
+- `Ctrl+/` — insert command template
