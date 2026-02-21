@@ -99,15 +99,15 @@ function parseScript(input){
     while(i<s.length){
       const {text, i:ni}=readEscapedText(i); i=ni; if(text) tokens.push({type:'TEXT_RAW', text});
       if(i>=s.length) break;
-      const end = s.indexOf('}', i+1); if(end<0) throw new Error('Некорректный формат {…}');
+      const end = s.indexOf('}', i+1); if(end<0) throw new Error('Invalid command format {…}');
       const cmd = s.slice(i+1,end).trim(); i=end+1;
       if(cmd==='/REPEAT'){
-        if(!inRepeat) throw new Error('Лишний {/REPEAT}');
+        if(!inRepeat) throw new Error('Unexpected {/REPEAT}');
         return {tokens, i, closed:true};
       }
       if(cmd.startsWith('REPEAT:')){
-        const n = Number(cmd.split(':')[1]); if(!Number.isInteger(n)||n<1) throw new Error('Некорректный {REPEAT:n}');
-        const inner = parseBlock(i, true); if(!inner.closed) throw new Error('Незакрытый {/REPEAT}');
+        const n = Number(cmd.split(':')[1]); if(!Number.isInteger(n)||n<1) throw new Error('Invalid {REPEAT:n}');
+        const inner = parseBlock(i, true); if(!inner.closed) throw new Error('Unclosed {/REPEAT}');
         tokens.push({type:'REPEAT', n, tokens:inner.tokens}); i=inner.i; continue;
       }
       tokens.push(parseCommand(cmd));
@@ -126,14 +126,14 @@ function parseCommand(cmd){
   if(cmd.startsWith('UP:')) return {type:'UP', key:cmd.slice(3).trim().toUpperCase()};
   if(cmd.startsWith('HOLD:')){ const p=cmd.split(':'); return {type:'HOLD', key:(p[1]||'').trim().toUpperCase(), ms:Number(p[2])}; }
   if(cmd.startsWith('TEXT:')){ return {type:'TEXT_RAW', text:parseQuoted(cmd.slice(5).trim())}; }
-  throw new Error(`Неизвестная команда {${cmd}}`);
+  throw new Error(`Unknown command {${cmd}}`);
 }
 
 function parseQuoted(q){
-  if(!q.startsWith('"')||!q.endsWith('"')) throw new Error('TEXT должен быть в кавычках');
+  if(!q.startsWith('"')||!q.endsWith('"')) throw new Error('TEXT must be in quotes');
   let out='';
   for(let i=1;i<q.length-1;i++){
-    if(q[i]==='\\'){ const n=q[++i]; if(n==='n') out+='\n'; else if(n==='"') out+='"'; else if(n==='\\') out+='\\'; else throw new Error('Неверный escape в TEXT'); }
+    if(q[i]==='\\'){ const n=q[++i]; if(n==='n') out+='\n'; else if(n==='"') out+='"'; else if(n==='\\') out+='\\'; else throw new Error('Invalid escape sequence in TEXT'); }
     else out+=q[i];
   }
   return out;
@@ -172,47 +172,51 @@ function compile(tokens){
   const jitter = (ms, text)=> !settings.human || (settings.jitterOnlyText && !text) ? ms : Math.max(0, ms + Math.floor((Math.random()*2-1)*settings.jitter));
   const btn = k => state.mapping?.[k];
   const push = (action,key,delay)=>{
-    const b=btn(key); if(b===undefined){ messages.push({level:'err', text:`Отсутствует KEY_NAME в mapping: ${key}`}); return; }
+    const b=btn(key); if(b===undefined){ messages.push({level:'err', text:`Missing KEY_NAME in mapping: ${key}`}); return; }
     events.push({Action:action, Button:Number(b), Delay:String(Math.max(0,Math.round(delay))), Type:state.eventType??10});
   };
   const tap = (key,text=false)=>{ push('down',key,settings.press); push('up',key,jitter(settings.inter,text)); };
+  const tapShifted = (key, text=true) => {
+    // Strict order: SHIFT down BEFORE target key down, SHIFT up AFTER target key up.
+    push('down', 'SHIFT', 0);
+    push('down', key, settings.press);
+    push('up', key, jitter(settings.inter, text));
+    push('up', 'SHIFT', 0);
+  };
 
   for(const t of tokens){
     if(t.type==='TEXT_RAW'){
       for(const ch of t.text){
         const p = charToUS(ch);
-        if(!p){ messages.push({level:'err', text:`Неизвестный символ: ${JSON.stringify(ch)}`}); typed += '[?]'; continue; }
+        if(!p){ messages.push({level:'err', text:`Unknown symbol: ${JSON.stringify(ch)}`}); typed += '[?]'; continue; }
         state.symbolUsage.add(`${ch} -> ${p.shift?'SHIFT+':''}${p.key}`);
         if(ch===':') state.symbolUsage.add(': -> SHIFT+SEMICOLON');
         if(ch===';') state.symbolUsage.add('; -> SEMICOLON');
         if(p.shift){
-          push('down','SHIFT',0);
-          push('down',p.key,settings.press);
-          push('up',p.key,jitter(settings.inter,true));
-          push('up','SHIFT',0);
+          tapShifted(p.key, true);
         } else tap(p.key,true);
         typed += p.out;
       }
     } else if(t.type==='KEY'){ tap(t.key,false); typed += t.key==='ENTER'?'\n':(t.key==='TAB'?'\t':(t.key==='SPACE'?' ':'['+t.key+']')); }
     else if(t.type==='RAW'){ tap(t.key,false); typed += `[${t.key}]`; }
     else if(t.type==='CHORD'){
-      const parts=t.value.split('+').map(x=>x.trim()).filter(Boolean); if(parts.length<2){ messages.push({level:'err', text:`Некорректный CHORD: ${t.value}`}); continue; }
+      const parts=t.value.split('+').map(x=>x.trim()).filter(Boolean); if(parts.length<2){ messages.push({level:'err', text:`Invalid CHORD: ${t.value}`}); continue; }
       const mods=parts.slice(0,-1); const main=parts.at(-1);
       mods.forEach(m=>push('down',m,0)); push('down',main,settings.press); push('up',main,jitter(settings.inter,false)); [...mods].reverse().forEach(m=>push('up',m,0));
       typed += `[${t.value}]`;
     } else if(t.type==='DOWN'){ push('down',t.key,settings.inter); if(['SHIFT','CTRL','ALT'].includes(t.key)) state.stickyMods.add(t.key); typed += `[DOWN:${t.key}]`; }
     else if(t.type==='UP'){ push('up',t.key,settings.inter); state.stickyMods.delete(t.key); typed += `[UP:${t.key}]`; }
-    else if(t.type==='HOLD'){ if(t.ms<0||!Number.isFinite(t.ms)){ messages.push({level:'err', text:`Некорректный HOLD ms: ${t.ms}`}); continue; } push('down',t.key,t.ms); push('up',t.key,settings.inter); typed += `[HOLD:${t.key}:${t.ms}]`; }
+    else if(t.type==='HOLD'){ if(t.ms<0||!Number.isFinite(t.ms)){ messages.push({level:'err', text:`Invalid HOLD ms: ${t.ms}`}); continue; } push('down',t.key,t.ms); push('up',t.key,settings.inter); typed += `[HOLD:${t.key}:${t.ms}]`; }
     else if(t.type==='DELAY'){
-      if(!Number.isFinite(t.ms)||t.ms<0||t.ms>3600000){ messages.push({level:'err', text:`Некорректная задержка: ${t.ms}`}); continue; }
-      if(events.length===0) messages.push({level:'warn', text:'{DELAY} в начале пропущен (нет предыдущего события)'});
+      if(!Number.isFinite(t.ms)||t.ms<0||t.ms>3600000){ messages.push({level:'err', text:`Invalid delay: ${t.ms}`}); continue; }
+      if(events.length===0) messages.push({level:'warn', text:'{DELAY} at script start was ignored (no previous event)'});
       else applyDelay(events, events.length-1, t.ms);
       typed += `[DELAY:${t.ms}]`;
     }
   }
   const endDelay = Math.max(0, Number(ui.endDelay.value)||0);
   if(endDelay && events.length) applyDelay(events, events.length-1, endDelay);
-  if(state.stickyMods.size) messages.push({level:'warn', text:`Залипшие модификаторы: ${[...state.stickyMods].join(', ')}`});
+  if(state.stickyMods.size) messages.push({level:'warn', text:`Sticky modifiers detected: ${[...state.stickyMods].join(', ')}`});
   return {events, messages, typed, rev};
 }
 
@@ -232,8 +236,8 @@ function generateGuid(){ const d=new Date(); return `${d.getFullYear()}_${String
 
 function regenerate(){
   const msgs=[];
-  if(!state.sample){ showMessages([{level:'err', text:'нужен sample.mac'}]); return; }
-  if(!state.mapping){ msgs.push({level:'warn', text:'mapping.json не загружен; можно скачать template'}); }
+  if(!state.sample){ showMessages([{level:'err', text:'sample.mac is required'}]); return; }
+  if(!state.mapping){ msgs.push({level:'warn', text:'mapping.json is not loaded; you can download template'}); }
   try {
     const tokens = flatten(parseScript(ui.script.value||''));
     const {events, messages, typed, rev} = compile(tokens);
