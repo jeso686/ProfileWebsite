@@ -6,15 +6,33 @@ const requiredCoverageKeys = [
 ];
 
 const mappingTemplate = {
-  ...Object.fromEntries(Array.from({length:26},(_,i)=>[String.fromCharCode(65+i), 4+i])),
-  '1':30,'2':31,'3':32,'4':33,'5':34,'6':35,'7':36,'8':37,'9':38,'0':39,
-  ENTER:40,ESC:41,BACKSPACE:42,TAB:43,SPACE:44,MINUS:45,EQUAL:46,LBRACKET:47,RBRACKET:48,BACKSLASH:49,
-  SEMICOLON:51,APOSTROPHE:52,GRAVE:53,COMMA:54,DOT:55,SLASH:56,
-  F1:58,F2:59,F3:60,F4:61,F5:62,F6:63,F7:64,F8:65,F9:66,F10:67,F11:68,F12:69,
-  RIGHT:79,LEFT:80,DOWN:81,UP:82,SHIFT:225,CTRL:224,ALT:226
+  ESC: 41,
+  F1: 58, F2: 59, F3: 60, F4: 61, F5: 62, F6: 63, F7: 64, F8: 65, F9: 66, F10: 67, F11: 68, F12: 69,
+  GRAVE: 53,
+  '1': 30, '2': 31, '3': 32, '4': 33, '5': 34, '6': 35, '7': 36, '8': 37, '9': 38, '0': 39,
+  MINUS: 45, EQUAL: 46, BACKSPACE: 42,
+  TAB: 43,
+  Q: 20, W: 26, E: 8, R: 21, T: 23, Y: 28, U: 24, I: 12, O: 18, P: 19,
+  LBRACKET: 47, RBRACKET: 48, BACKSLASH: 49,
+  A: 4, S: 22, D: 7, F: 9, G: 10, H: 11, J: 13, K: 14, L: 15,
+  SEMICOLON: 51, APOSTROPHE: 52, ENTER: 40,
+  Z: 29, X: 27, C: 6, V: 25, B: 5, N: 17, M: 16,
+  COMMA: 54, DOT: 55, SLASH: 56,
+  SPACE: 44,
+  LEFT: 80, DOWN: 81, RIGHT: 79, UP: 82,
+  INS: 73, DEL: 76, PGUP: 75, PGDN: 78,
+  CAPS: 57,
+  LCTRL: 1, LSHIFT: 2, LALT: 4, LWIN: 8,
+  RCTRL: 16, RSHIFT: 32, RALT: 64, RWIN: 128,
+  CTRL: 1, SHIFT: 2, ALT: 4, WIN: 8
 };
 
+const MOD_BUTTONS = new Set([1, 2, 4, 8, 16, 32, 64, 128]);
+const DEFAULT_KEY_TYPE = 10;
+const DEFAULT_MOD_TYPE = 9;
+
 const state = {
+
   sample:null, mapping:null, generated:null, messages:[], symbolUsage:new Set(), stickyMods:new Set(),
   delayRule:'event_self'
 };
@@ -72,9 +90,21 @@ ui.presets.onclick = e=>{ const i=e.target.dataset.i; if(i===undefined) return; 
 
 function inferSampleRule(){
   const events = state.sample?.Events || [];
-  const eventType = events[0]?.Type ?? 10;
-  state.eventType = eventType;
-  state.delayRule = 'event_self'; // inferred: Delay exists on every event in sample
+  const keyTypes = new Set();
+  const modTypes = new Set();
+  for (const ev of events) {
+    const btn = Number(ev.Button);
+    const typeNum = Number(ev.Type);
+    if (!Number.isFinite(typeNum)) continue;
+    if (MOD_BUTTONS.has(btn)) modTypes.add(typeNum);
+    else keyTypes.add(typeNum);
+  }
+  state.keyEventType = keyTypes.size ? [...keyTypes][0] : DEFAULT_KEY_TYPE;
+  state.modEventType = modTypes.size ? [...modTypes][0] : DEFAULT_MOD_TYPE;
+  state.sampleTypeWarning = (!keyTypes.size || !modTypes.size)
+    ? 'Sample does not include both key/modifier event types. Using fallback routing: modifiers=9, keys=10 when missing.'
+    : '';
+  state.delayRule = 'event_self';
 }
 
 function preprocess(script){
@@ -173,7 +203,9 @@ function compile(tokens){
   const btn = k => state.mapping?.[k];
   const push = (action,key,delay)=>{
     const b=btn(key); if(b===undefined){ messages.push({level:'err', text:`Missing KEY_NAME in mapping: ${key}`}); return; }
-    events.push({Action:action, Button:Number(b), Delay:String(Math.max(0,Math.round(delay))), Type:state.eventType??10});
+    const button = Number(b);
+    const type = MOD_BUTTONS.has(button) ? (state.modEventType ?? DEFAULT_MOD_TYPE) : (state.keyEventType ?? DEFAULT_KEY_TYPE);
+    events.push({Action:action, Button:button, Delay:String(Math.max(0,Math.round(delay))), Type:type});
   };
   const tap = (key,text=false)=>{ push('down',key,settings.press); push('up',key,jitter(settings.inter,text)); };
   const tapShifted = (key, text=true) => {
@@ -238,6 +270,7 @@ function regenerate(){
   const msgs=[];
   if(!state.sample){ showMessages([{level:'err', text:'sample.mac is required'}]); return; }
   if(!state.mapping){ msgs.push({level:'warn', text:'mapping.json is not loaded; you can download template'}); }
+  if(state.sampleTypeWarning){ msgs.push({level:'warn', text:state.sampleTypeWarning}); }
   try {
     const tokens = flatten(parseScript(ui.script.value||''));
     const {events, messages, typed, rev} = compile(tokens);
@@ -248,7 +281,7 @@ function regenerate(){
     state.generated = mac;
 
     const total = events.reduce((a,e)=>a+Number(e.Delay||0),0);
-    ui.summary.textContent = `Events: ${events.length}\nTotal delay: ${total} ms\nDelay rule: per-event (from sample)`;
+    ui.summary.textContent = `Events: ${events.length}\nTotal delay: ${total} ms\nDelay rule: per-event (from sample)\nType routing: mod=${state.modEventType ?? DEFAULT_MOD_TYPE}, key=${state.keyEventType ?? DEFAULT_KEY_TYPE}`;
     ui.typed.textContent = typed;
     ui.symbolMap.textContent = [...state.symbolUsage].sort().join('\n') || '(none)';
     ui.eventPreview.textContent = events.slice(0,60).map((e,i)=>`${i+1}. ${e.Action} ${rev[e.Button]||'?'} (${e.Button}) Delay=${e.Delay}`).join('\n');

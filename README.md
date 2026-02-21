@@ -57,6 +57,14 @@ If you do not have a mapping yet, click **Download mapping template**.
 - `;` is generated as `SEMICOLON` without Shift.
 - For shifted symbols: `SHIFT down` -> `key down/up` -> `SHIFT up`.
 
+
+## Redragon event Type handling
+- The generator writes `Delay` as a **string** (for example `"70"`), matching Redragon exports.
+- Event `Type` is routed per button category:
+  - modifier buttons (`1,2,4,8,16,32,64,128`) -> modifier type (normally `9`)
+  - all other buttons -> key type (normally `10`)
+- If your loaded `sample.mac` does not contain both categories, the app shows a warning and uses fallback `mod=9`, `key=10` for missing category.
+
 ## Hotkeys
 - `Ctrl+Enter` — Generate
 - `Ctrl+S` — Download `.mac`
