@@ -1,0 +1,61 @@
+USE learning_material_db;
+
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(120) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    role_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+
+CREATE TABLE IF NOT EXISTS topics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    topic_name VARCHAR(120) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS materials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    file_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    topic_id INT NOT NULL,
+    author_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_material_topic FOREIGN KEY (topic_id) REFERENCES topics(id),
+    CONSTRAINT fk_material_author FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    material_id INT NOT NULL,
+    author_id INT NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_comment_material FOREIGN KEY (material_id) REFERENCES materials(id),
+    CONSTRAINT fk_comment_author FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tag_name VARCHAR(80) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS material_tags (
+    material_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    PRIMARY KEY (material_id, tag_id),
+    CONSTRAINT fk_material_tags_material FOREIGN KEY (material_id) REFERENCES materials(id),
+    CONSTRAINT fk_material_tags_tag FOREIGN KEY (tag_id) REFERENCES tags(id)
+);
