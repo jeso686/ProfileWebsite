@@ -28,6 +28,9 @@ learning_material_manager/
     standard_queries.sql
   storage/
     materials/
+      algebra_notes.pdf
+      physics_lab.docx
+      python_intro.txt
   docs/
     Projektdokumentation.md
     ERM.md
@@ -68,10 +71,12 @@ python -m app.main
 5. Material oeffnen
 6. Kommentar hinzufuegen
 7. Kommentare anzeigen
-8. Sieben Standard-SQL-Abfragen ausfuehren
-9. Programm beenden
+8. Kommentar loeschen
+9. Sieben Standard-SQL-Abfragen ausfuehren
+10. Programm beenden
 
 ## Wichtiger Hinweis
 Die Anwendung speichert keine Dateien in MySQL.
-Beim Upload wird die Datei nach `storage/materials/` kopiert.
+Beim Upload wird eine vorhandene Datei nach `storage/materials/` kopiert.
+Wenn der eingegebene Pfad nicht existiert, kann direkt im Programm eine neue Textdatei mit Inhalt angelegt werden.
 In MySQL werden nur Dateiname, Dateityp, Dateigroesse und Dateipfad gespeichert.

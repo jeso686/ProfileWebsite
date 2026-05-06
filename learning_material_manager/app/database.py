@@ -48,3 +48,15 @@ def execute_query(query: str, params: tuple[Any, ...] | None = None) -> int:
     finally:
         cursor.close()
         connection.close()
+
+
+def execute_change(query: str, params: tuple[Any, ...] | None = None) -> int:
+    connection = get_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query, params or ())
+        connection.commit()
+        return cursor.rowcount
+    finally:
+        cursor.close()
+        connection.close()

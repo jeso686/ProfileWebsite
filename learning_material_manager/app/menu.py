@@ -3,11 +3,14 @@ from __future__ import annotations
 import os
 import platform
 import subprocess
-from pathlib import Path
-
-from app.comment_service import create_comment, list_comments_by_material
+from app.comment_service import create_comment, delete_comment, list_comments_by_material
 from app.database import fetch_all
-from app.file_storage import copy_material_to_storage, file_exists
+from app.file_storage import (
+    copy_material_to_storage,
+    create_material_file,
+    file_exists,
+    resolve_material_path,
+)
 from app.material_service import (
     create_material,
     get_material_by_id,
@@ -99,8 +102,9 @@ def show_menu() -> None:
     print("5. Material oeffnen")
     print("6. Kommentar hinzufuegen")
     print("7. Kommentare anzeigen")
-    print("8. Sieben Standard-SQL-Abfragen ausfuehren")
-    print("9. Programm beenden")
+    print("8. Kommentar loeschen")
+    print("9. Sieben Standard-SQL-Abfragen ausfuehren")
+    print("10. Programm beenden")
 
 
 def print_table(rows: list[dict]) -> None:
@@ -129,16 +133,41 @@ def select_user() -> int:
     return int(input("Benutzer-ID eingeben: ").strip())
 
 
+def read_new_file_content() -> str:
+    print("Datei wurde nicht gefunden.")
+    print("Es kann jetzt eine neue Datei im Speicher angelegt werden.")
+    create_choice = input("Neue Datei anlegen? (j/n): ").strip().lower()
+    if create_choice != "j":
+        return ""
+
+    print("Inhalt eingeben. Eine einzelne Zeile mit ENDE beendet die Eingabe.")
+    lines = []
+    while True:
+        line = input()
+        if line == "ENDE":
+            break
+        lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
 def upload_material() -> None:
-    source_file_path = input("Dateipfad eingeben: ").strip()
-    if not file_exists(source_file_path):
-        print("Datei wurde nicht gefunden.")
+    source_file_path = input("Dateipfad oder neuer Dateiname eingeben: ").strip()
+    if not source_file_path:
+        print("Eingabe darf nicht leer sein.")
         return
+
+    if file_exists(source_file_path):
+        metadata = copy_material_to_storage(source_file_path)
+    else:
+        content = read_new_file_content()
+        if not content:
+            print("Upload wurde abgebrochen.")
+            return
+        metadata = create_material_file(source_file_path, content)
 
     topic_id = select_topic()
     author_id = select_user()
 
-    metadata = copy_material_to_storage(source_file_path)
     material_id = create_material(metadata, topic_id, author_id)
     print(f"Material wurde gespeichert. Neue ID: {material_id}")
 
@@ -161,15 +190,17 @@ def search_by_topic() -> None:
 
 
 def open_material() -> None:
+    print("\nVerfuegbare Materialien:")
+    print_table(list_materials())
     material_id = int(input("Material-ID eingeben: ").strip())
     material = get_material_by_id(material_id)
     if not material:
-        print("Material wurde nicht gefunden.")
+        print("Material wurde nicht gefunden. Bitte eine ID aus der Liste waehlen.")
         return
 
-    file_path = Path(material["file_path"])
+    file_path = resolve_material_path(material["file_path"])
     if not file_path.exists():
-        print("Datei existiert nicht im Dateisystem.")
+        print(f"Datei existiert nicht im Dateisystem: {file_path}")
         return
 
     system_name = platform.system().lower()
@@ -204,6 +235,26 @@ def show_comments() -> None:
     print_table(rows)
 
 
+def remove_comment() -> None:
+    material_id = int(input("Material-ID eingeben: ").strip())
+    rows = list_comments_by_material(material_id)
+    print_table(rows)
+    if not rows:
+        return
+
+    comment_id = int(input("Kommentar-ID zum Loeschen eingeben: ").strip())
+    confirm = input("Kommentar wirklich loeschen? (j/n): ").strip().lower()
+    if confirm != "j":
+        print("Loeschen wurde abgebrochen.")
+        return
+
+    deleted_rows = delete_comment(comment_id, material_id)
+    if deleted_rows == 0:
+        print("Kommentar wurde nicht gefunden.")
+    else:
+        print("Kommentar wurde geloescht.")
+
+
 def run_standard_queries() -> None:
     for key, (label, query) in STANDARD_SQL_QUERIES.items():
         print(f"\n[{key}] {label}")
@@ -220,14 +271,15 @@ def run_menu_loop() -> None:
         "5": open_material,
         "6": add_comment,
         "7": show_comments,
-        "8": run_standard_queries,
+        "8": remove_comment,
+        "9": run_standard_queries,
     }
 
     while True:
         show_menu()
         choice = input("Bitte eine Option waehlen: ").strip()
 
-        if choice == "9":
+        if choice == "10":
             print("Programm wird beendet.")
             break
 

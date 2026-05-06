@@ -14,11 +14,18 @@
 5. Material oeffnen
 6. Kommentar hinzufuegen
 7. Kommentare anzeigen
-8. Standard-SQL-Abfragen ausfuehren
-9. Programm beenden
+8. Kommentar loeschen
+9. Standard-SQL-Abfragen ausfuehren
+10. Programm beenden
 
 ## Upload-Ablauf
-- Dateipfad eingeben
-- Existenz wird geprueft
-- Datei wird nach `storage/materials/` kopiert
+- Dateipfad oder neuer Dateiname eingeben
+- Wenn die Datei existiert, wird sie nach `storage/materials/` kopiert
+- Wenn die Datei nicht existiert, kann eine neue Datei mit Inhalt angelegt werden
 - Metadaten werden in `materials` gespeichert
+
+## Kommentar loeschen
+- Material-ID eingeben
+- Kommentare werden angezeigt
+- Kommentar-ID eingeben
+- Loeschen mit `j` bestaetigen
