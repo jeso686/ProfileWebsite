@@ -7,13 +7,14 @@ Dateien werden nur im Dateisystem gespeichert. In MySQL werden nur Metadaten und
 ## Umfang
 - Python-Konsolenanwendung ohne GUI
 - MySQL als Datenbank
-- Upload, Suche, Anzeige, Kommentare und Kommentar-Loeschung
+- Upload, Suche, Anzeige, Kommentare, Kommentar-Loeschung und Material-Loeschung
 - 7 Standard-SQL-Abfragen
 
 ## Kernidee
 Beim Upload wird eine vorhandene Datei aus einem beliebigen Quellpfad nach `storage/materials/` kopiert.
 Wenn kein vorhandener Pfad eingegeben wird, kann eine neue Datei mit Inhalt im Speicher angelegt werden.
 Danach werden Dateiname, Typ, Groesse und Pfad in der Tabelle `materials` gespeichert.
+Beim Loeschen eines Materials werden Datenbankeintrag und Datei im Ordner entfernt.
 
 ## Abgrenzung
 - Keine Weboberflaeche

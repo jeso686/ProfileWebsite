@@ -3,16 +3,19 @@ from __future__ import annotations
 import os
 import platform
 import subprocess
+
 from app.comment_service import create_comment, delete_comment, list_comments_by_material
 from app.database import fetch_all
 from app.file_storage import (
     copy_material_to_storage,
     create_material_file,
+    delete_material_file,
     file_exists,
     resolve_material_path,
 )
 from app.material_service import (
     create_material,
+    delete_material,
     get_material_by_id,
     list_materials,
     list_topics,
@@ -21,6 +24,7 @@ from app.material_service import (
 from app.search_service import search_materials_by_filename, search_materials_by_topic
 
 
+# Das Menue kann diese sieben SQL-Beispielabfragen fuer die Praesentation ausfuehren.
 STANDARD_SQL_QUERIES = {
     1: (
         "Aggregation: Anzahl der Materialien pro Thema",
@@ -94,6 +98,7 @@ STANDARD_SQL_QUERIES = {
 
 
 def show_menu() -> None:
+    # Gibt alle verfuegbaren Konsolenaktionen auf Deutsch aus.
     print("\n===== Lernmaterialverwaltung =====")
     print("1. Material hochladen")
     print("2. Alle Materialien anzeigen")
@@ -103,11 +108,13 @@ def show_menu() -> None:
     print("6. Kommentar hinzufuegen")
     print("7. Kommentare anzeigen")
     print("8. Kommentar loeschen")
-    print("9. Sieben Standard-SQL-Abfragen ausfuehren")
-    print("10. Programm beenden")
+    print("9. Material loeschen")
+    print("10. Sieben Standard-SQL-Abfragen ausfuehren")
+    print("11. Programm beenden")
 
 
 def print_table(rows: list[dict]) -> None:
+    # Gibt Datenbankzeilen in einem einfachen Tabellenformat aus.
     if not rows:
         print("Keine Daten gefunden.")
         return
@@ -120,6 +127,7 @@ def print_table(rows: list[dict]) -> None:
 
 
 def select_topic() -> int:
+    # Zeigt Themen an und fragt nach einer Thema-ID.
     print("\nVerfuegbare Themen:")
     topics = list_topics()
     print_table(topics)
@@ -127,6 +135,7 @@ def select_topic() -> int:
 
 
 def select_user() -> int:
+    # Zeigt Benutzer an und fragt nach einer Autor-ID.
     print("\nVerfuegbare Benutzer:")
     users = list_users()
     print_table(users)
@@ -134,6 +143,7 @@ def select_user() -> int:
 
 
 def read_new_file_content() -> str:
+    # Fragt Textinhalt ab, wenn keine Quelldatei gefunden wurde.
     print("Datei wurde nicht gefunden.")
     print("Es kann jetzt eine neue Datei im Speicher angelegt werden.")
     create_choice = input("Neue Datei anlegen? (j/n): ").strip().lower()
@@ -151,6 +161,7 @@ def read_new_file_content() -> str:
 
 
 def upload_material() -> None:
+    # Speichert eine kopierte Datei oder erstellt eine neue Textdatei und speichert Metadaten.
     source_file_path = input("Dateipfad oder neuer Dateiname eingeben: ").strip()
     if not source_file_path:
         print("Eingabe darf nicht leer sein.")
@@ -173,23 +184,27 @@ def upload_material() -> None:
 
 
 def show_all_materials() -> None:
+    # Laedt alle Materialien und gibt sie aus.
     materials = list_materials()
     print_table(materials)
 
 
 def search_by_filename() -> None:
+    # Sucht Materialien mit einer LIKE-Abfrage nach Dateiname.
     text = input("Suchtext fuer Dateiname eingeben: ").strip()
     rows = search_materials_by_filename(text)
     print_table(rows)
 
 
 def search_by_topic() -> None:
+    # Sucht Materialien mit einer LIKE-Abfrage nach Thema.
     text = input("Suchtext fuer Thema eingeben: ").strip()
     rows = search_materials_by_topic(text)
     print_table(rows)
 
 
 def open_material() -> None:
+    # Zeigt zuerst Materialien an, damit die richtige ID gewaehlt werden kann.
     print("\nVerfuegbare Materialien:")
     print_table(list_materials())
     material_id = int(input("Material-ID eingeben: ").strip())
@@ -217,6 +232,7 @@ def open_material() -> None:
 
 
 def add_comment() -> None:
+    # Speichert einen neuen Kommentar fuer ein Material.
     material_id = int(input("Material-ID eingeben: ").strip())
     author_id = select_user()
     comment_text = input("Kommentar eingeben: ").strip()
@@ -230,12 +246,14 @@ def add_comment() -> None:
 
 
 def show_comments() -> None:
+    # Zeigt alle Kommentare fuer ein ausgewaehltes Material.
     material_id = int(input("Material-ID eingeben: ").strip())
     rows = list_comments_by_material(material_id)
     print_table(rows)
 
 
 def remove_comment() -> None:
+    # Loescht einen ausgewaehlten Kommentar nach Bestaetigung.
     material_id = int(input("Material-ID eingeben: ").strip())
     rows = list_comments_by_material(material_id)
     print_table(rows)
@@ -255,7 +273,35 @@ def remove_comment() -> None:
         print("Kommentar wurde geloescht.")
 
 
+def remove_material() -> None:
+    # Loescht ein Material aus der Datenbank und entfernt die gespeicherte Datei.
+    print("\nVerfuegbare Materialien:")
+    print_table(list_materials())
+    material_id = int(input("Material-ID zum Loeschen eingeben: ").strip())
+    material = get_material_by_id(material_id)
+    if not material:
+        print("Material wurde nicht gefunden.")
+        return
+
+    confirm = input("Material wirklich aus Datenbank und Ordner loeschen? (j/n): ").strip().lower()
+    if confirm != "j":
+        print("Loeschen wurde abgebrochen.")
+        return
+
+    deleted_rows = delete_material(material_id)
+    if deleted_rows == 0:
+        print("Material wurde nicht in der Datenbank geloescht.")
+        return
+
+    file_deleted = delete_material_file(material["file_path"])
+    if file_deleted:
+        print("Material wurde in der Datenbank und im Ordner geloescht.")
+    else:
+        print("Material wurde in der Datenbank geloescht. Datei war im Ordner nicht vorhanden.")
+
+
 def run_standard_queries() -> None:
+    # Fuehrt jede vorbereitete SQL-Abfrage aus und gibt das Ergebnis aus.
     for key, (label, query) in STANDARD_SQL_QUERIES.items():
         print(f"\n[{key}] {label}")
         rows = fetch_all(query)
@@ -263,6 +309,7 @@ def run_standard_queries() -> None:
 
 
 def run_menu_loop() -> None:
+    # Verknuepft die Menuezahlen mit Python-Funktionen.
     actions = {
         "1": upload_material,
         "2": show_all_materials,
@@ -272,14 +319,16 @@ def run_menu_loop() -> None:
         "6": add_comment,
         "7": show_comments,
         "8": remove_comment,
-        "9": run_standard_queries,
+        "9": remove_material,
+        "10": run_standard_queries,
     }
 
+    # Haelt das Programm aktiv, bis der Benutzer es beendet.
     while True:
         show_menu()
         choice = input("Bitte eine Option waehlen: ").strip()
 
-        if choice == "10":
+        if choice == "11":
             print("Programm wird beendet.")
             break
 

@@ -72,11 +72,17 @@ python -m app.main
 6. Kommentar hinzufuegen
 7. Kommentare anzeigen
 8. Kommentar loeschen
-9. Sieben Standard-SQL-Abfragen ausfuehren
-10. Programm beenden
+9. Material loeschen
+10. Sieben Standard-SQL-Abfragen ausfuehren
+11. Programm beenden
 
 ## Wichtiger Hinweis
 Die Anwendung speichert keine Dateien in MySQL.
 Beim Upload wird eine vorhandene Datei nach `storage/materials/` kopiert.
 Wenn der eingegebene Pfad nicht existiert, kann direkt im Programm eine neue Textdatei mit Inhalt angelegt werden.
 In MySQL werden nur Dateiname, Dateityp, Dateigroesse und Dateipfad gespeichert.
+
+## Material loeschen
+Beim Loeschen eines Materials werden zuerst die Datenbankeintraege entfernt.
+Danach wird die gespeicherte Datei aus `storage/materials/` geloescht.
+Auch Kommentare und Tag-Verknuepfungen des Materials werden entfernt.

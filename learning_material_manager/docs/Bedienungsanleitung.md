@@ -15,8 +15,9 @@
 6. Kommentar hinzufuegen
 7. Kommentare anzeigen
 8. Kommentar loeschen
-9. Standard-SQL-Abfragen ausfuehren
-10. Programm beenden
+9. Material loeschen
+10. Standard-SQL-Abfragen ausfuehren
+11. Programm beenden
 
 ## Upload-Ablauf
 - Dateipfad oder neuer Dateiname eingeben
@@ -29,3 +30,9 @@
 - Kommentare werden angezeigt
 - Kommentar-ID eingeben
 - Loeschen mit `j` bestaetigen
+
+## Material loeschen
+- Menuepunkt 9 auswaehlen
+- Material-ID eingeben
+- Loeschen mit `j` bestaetigen
+- Der Datenbankeintrag und die Datei im Ordner werden geloescht
