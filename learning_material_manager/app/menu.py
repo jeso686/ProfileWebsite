@@ -53,7 +53,7 @@ def print_table(rows: list[dict]) -> None:
         print(" | ".join(str(row[h]) for h in headers))
 
 
-def login_user() -> None:
+def login_user() -> bool:
     # Fragt Rolle und Benutzer ab, bevor das Menue startet.
     global CURRENT_USER_ID, CURRENT_ROLE
     role_map = {"1": "admin", "2": "teacher", "3": "student"}
@@ -62,7 +62,12 @@ def login_user() -> None:
         print("1. Admin")
         print("2. Teacher")
         print("3. Student")
+        print("0. Programm beenden")
         role_choice = input("Rolle waehlen: ").strip()
+
+        if role_choice == "0":
+            return False
+
         role_name = role_map.get(role_choice)
         if not role_name:
             print("Ungueltige Eingabe.")
@@ -80,8 +85,15 @@ def login_user() -> None:
             CURRENT_USER_ID = user_id
             CURRENT_ROLE = role_name
             print(f"Erfolgreich angemeldet als {role_name}.")
-            return
+            return True
         print("Ungueltige Benutzer-ID fuer diese Rolle.")
+
+
+def logout_user() -> None:
+    # Meldet den aktuellen Benutzer ab.
+    global CURRENT_USER_ID, CURRENT_ROLE
+    CURRENT_USER_ID = None
+    CURRENT_ROLE = None
 
 
 def can_delete() -> bool:
@@ -104,9 +116,11 @@ def show_menu() -> None:
         print("9. Material loeschen")
     print("10. Sieben Standard-SQL-Abfragen ausfuehren")
     print("11. Programm beenden")
+    print("12. Abmelden")
 
 
 def select_topic() -> int:
+    # Zeigt Themen an und fragt nach einer Thema-ID.
     print("\nVerfuegbare Themen:")
     topics = list_topics()
     print_table(topics)
@@ -122,6 +136,7 @@ def select_tag() -> int:
 
 
 def read_new_file_content() -> str:
+    # Fragt Textinhalt ab, wenn keine Quelldatei gefunden wurde.
     print("Datei wurde nicht gefunden.")
     print("Es kann jetzt eine neue Datei im Speicher angelegt werden.")
     create_choice = input("Neue Datei anlegen? (j/n): ").strip().lower()
@@ -138,6 +153,7 @@ def read_new_file_content() -> str:
 
 
 def upload_material() -> None:
+    # Speichert eine kopierte Datei oder erstellt eine neue Textdatei und speichert Metadaten.
     source_file_path = input("Dateipfad oder neuer Dateiname eingeben: ").strip()
     if not source_file_path:
         print("Eingabe darf nicht leer sein.")
@@ -159,20 +175,24 @@ def upload_material() -> None:
 
 
 def show_all_materials() -> None:
+    # Laedt alle Materialien und gibt sie aus.
     print_table(list_materials())
 
 
 def search_by_filename() -> None:
+    # Sucht Materialien mit einer LIKE-Abfrage nach Dateiname.
     text = input("Suchtext fuer Dateiname eingeben: ").strip()
     print_table(search_materials_by_filename(text))
 
 
 def search_by_topic() -> None:
+    # Sucht Materialien mit einer LIKE-Abfrage nach Thema.
     text = input("Suchtext fuer Thema eingeben: ").strip()
     print_table(search_materials_by_topic(text))
 
 
 def open_material() -> None:
+    # Zeigt zuerst Materialien an, damit die richtige ID gewaehlt werden kann.
     print("\nVerfuegbare Materialien:")
     print_table(list_materials())
     material_id = int(input("Material-ID eingeben: ").strip())
@@ -198,6 +218,7 @@ def open_material() -> None:
 
 
 def add_comment() -> None:
+    # Speichert einen neuen Kommentar fuer ein Material.
     material_id = int(input("Material-ID eingeben: ").strip())
     comment_text = input("Kommentar eingeben: ").strip()
     if not comment_text:
@@ -208,11 +229,13 @@ def add_comment() -> None:
 
 
 def show_comments() -> None:
+    # Zeigt alle Kommentare fuer ein ausgewaehltes Material.
     material_id = int(input("Material-ID eingeben: ").strip())
     print_table(list_comments_by_material(material_id))
 
 
 def remove_comment() -> None:
+    # Loescht einen ausgewaehlten Kommentar nach Bestaetigung.
     if not can_delete():
         print("Diese Funktion ist fuer Student nicht erlaubt.")
         return
@@ -231,6 +254,7 @@ def remove_comment() -> None:
 
 
 def remove_material() -> None:
+    # Loescht ein Material aus der Datenbank und entfernt die gespeicherte Datei.
     if not can_delete():
         print("Diese Funktion ist fuer Student nicht erlaubt.")
         return
@@ -254,41 +278,52 @@ def remove_material() -> None:
 
 
 def run_standard_queries() -> None:
+    # Fuehrt jede vorbereitete SQL-Abfrage aus und gibt das Ergebnis aus.
     for key, (label, query) in STANDARD_SQL_QUERIES.items():
         print(f"\n[{key}] {label}")
         print_table(fetch_all(query))
 
 
 def run_menu_loop() -> None:
-    login_user()
-    actions = {
-        "1": upload_material,
-        "2": show_all_materials,
-        "3": search_by_filename,
-        "4": search_by_topic,
-        "5": open_material,
-        "6": add_comment,
-        "7": show_comments,
-        "8": remove_comment,
-        "9": remove_material,
-        "10": run_standard_queries,
-    }
+    # Steuert Anmeldung, Abmeldung und die Menueausfuehrung.
     while True:
-        show_menu()
-        choice = input("Bitte eine Option waehlen: ").strip()
-        if choice == "11":
+        if not login_user():
             print("Programm wird beendet.")
             break
-        if not can_delete() and choice in {"8", "9"}:
-            print("Diese Funktion ist fuer Student nicht erlaubt.")
-            continue
-        action = actions.get(choice)
-        if not action:
-            print("Ungueltige Eingabe.")
-            continue
-        try:
-            action()
-        except ValueError:
-            print("Bitte eine gueltige Zahl eingeben.")
-        except Exception as error:
-            print(f"Fehler: {error}")
+
+        actions = {
+            "1": upload_material,
+            "2": show_all_materials,
+            "3": search_by_filename,
+            "4": search_by_topic,
+            "5": open_material,
+            "6": add_comment,
+            "7": show_comments,
+            "8": remove_comment,
+            "9": remove_material,
+            "10": run_standard_queries,
+        }
+
+        while True:
+            show_menu()
+            choice = input("Bitte eine Option waehlen: ").strip()
+            if choice == "11":
+                print("Programm wird beendet.")
+                return
+            if choice == "12":
+                logout_user()
+                print("Erfolgreich abgemeldet.")
+                break
+            if not can_delete() and choice in {"8", "9"}:
+                print("Diese Funktion ist fuer Student nicht erlaubt.")
+                continue
+            action = actions.get(choice)
+            if not action:
+                print("Ungueltige Eingabe.")
+                continue
+            try:
+                action()
+            except ValueError:
+                print("Bitte eine gueltige Zahl eingeben.")
+            except Exception as error:
+                print(f"Fehler: {error}")
