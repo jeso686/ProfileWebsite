@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.database import execute_query, execute_transaction, fetch_all
+from app.database import execute_change, execute_query, execute_transaction, fetch_all
 
 
 # Fuegt einen Metadatensatz fuer eine gespeicherte Materialdatei ein.
@@ -12,13 +12,18 @@ VALUES (%s, %s, %s, %s, %s, %s)
 """
 
 
-# Zeigt Materialien mit lesbaren Themen- und Autorennamen an.
+# Zeigt Materialien mit lesbaren Themen-, Autoren- und Tag-Namen an.
 MATERIAL_LIST_QUERY = """
 SELECT m.id, m.filename, m.file_type, m.file_size, m.file_path,
-       t.topic_name, u.full_name AS author_name, m.created_at
+       t.topic_name, u.full_name AS author_name,
+       COALESCE(GROUP_CONCAT(DISTINCT tg.tag_name ORDER BY tg.tag_name SEPARATOR ', '), '-') AS tags,
+       m.created_at
 FROM materials m
 INNER JOIN topics t ON t.id = m.topic_id
 INNER JOIN users u ON u.id = m.author_id
+LEFT JOIN material_tags mt ON mt.material_id = m.id
+LEFT JOIN tags tg ON tg.id = mt.tag_id
+GROUP BY m.id, m.filename, m.file_type, m.file_size, m.file_path, t.topic_name, u.full_name, m.created_at
 ORDER BY m.id ASC
 """
 
@@ -26,6 +31,15 @@ ORDER BY m.id ASC
 # Einfache Abfragen fuer Auswahllisten im Menue.
 TOPIC_LIST_QUERY = "SELECT id, topic_name FROM topics ORDER BY id"
 USER_LIST_QUERY = "SELECT id, full_name FROM users ORDER BY id"
+TAG_LIST_QUERY = "SELECT id, tag_name FROM tags ORDER BY id"
+USER_BY_ROLE_QUERY = """
+SELECT u.id, u.full_name
+FROM users u
+INNER JOIN roles r ON r.id = u.role_id
+WHERE LOWER(r.role_name) = %s
+ORDER BY u.id
+"""
+MATERIAL_TAG_INSERT_QUERY = "INSERT INTO material_tags (material_id, tag_id) VALUES (%s, %s)"
 
 
 # Entfernt zuerst abhaengige Zeilen und danach das Material.
@@ -51,6 +65,11 @@ def create_material(metadata: dict[str, Any], topic_id: int, author_id: int) -> 
     )
 
 
+def add_material_tag(material_id: int, tag_id: int) -> int:
+    # Speichert die Zuordnung zwischen Material und Tag.
+    return execute_change(MATERIAL_TAG_INSERT_QUERY, (material_id, tag_id))
+
+
 def list_materials() -> list[dict[str, Any]]:
     # Gibt alle Materialien fuer die Anzeige im Konsolenmenue zurueck.
     return fetch_all(MATERIAL_LIST_QUERY)
@@ -64,6 +83,16 @@ def list_topics() -> list[dict[str, Any]]:
 def list_users() -> list[dict[str, Any]]:
     # Gibt Benutzer zurueck, damit eine Autor-ID gewaehlt werden kann.
     return fetch_all(USER_LIST_QUERY)
+
+
+def list_tags() -> list[dict[str, Any]]:
+    # Gibt alle verfuegbaren Tags zur Auswahl zurueck.
+    return fetch_all(TAG_LIST_QUERY)
+
+
+def list_users_by_role(role_name: str) -> list[dict[str, Any]]:
+    # Gibt Benutzer passend zur gewaehlten Rolle zurueck.
+    return fetch_all(USER_BY_ROLE_QUERY, (role_name.lower(),))
 
 
 def get_material_by_id(material_id: int) -> dict[str, Any] | None:
